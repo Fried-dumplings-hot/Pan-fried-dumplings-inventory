@@ -3,7 +3,7 @@ name: Deploy Zip Content
 on:
   push:
     branches:
-      - main
+      - main # 如果你的主要分支是 master，請改成 master
 
 permissions:
   contents: write
@@ -14,16 +14,16 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout程式碼
+      - name: Checkout 程式碼
         uses: actions/checkout@v4
 
       - name: 解壓縮檔案
         run: |
+          # 解壓你的煎餃庫存系統壓縮檔到 dist 暫存區
           unzip Pan-fried-dumplings-inventory.zip -d ./dist
-          # 如果是 tar.gz 可以用: tar -xvf project.tar.gz -C ./dist
 
       - name: 部署到 GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: dist/client # 這是解壓後的資料夾名稱
-          branch: gh-pages # 部署到這個分支
+          folder: dist/client # 指定到解壓後的 client 資料夾
+          branch: gh-pages # 自動部署到 gh-pages 分支
