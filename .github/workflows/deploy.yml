@@ -19,7 +19,7 @@ jobs:
 
       - name: 解壓縮檔案
         run: 
-          unzip Pan-fried dumplings-inventory.zip -d ./dist
+          unzip Pan-fried-dumplings-inventory.zip -d ./dist
           # 如果是 tar.gz 可以用: tar -xvf project.tar.gz -C ./dist
 
       - name: 部署到 GitHub Pages
