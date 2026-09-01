@@ -18,12 +18,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 解壓縮檔案
-        run: |
+        run: 
           unzip Pan-fried dumplings-inventory.zip -d ./dist
           # 如果是 tar.gz 可以用: tar -xvf project.tar.gz -C ./dist
 
       - name: 部署到 GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: dist # 這是解壓後的資料夾名稱
+          folder: dist/client # 這是解壓後的資料夾名稱
           branch: gh-pages # 部署到這個分支
