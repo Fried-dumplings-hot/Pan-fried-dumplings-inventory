@@ -1,0 +1,1 @@
+ALTER TABLE `inventorySnapshots` ADD `snapshotVersion` int DEFAULT 0 NOT NULL;

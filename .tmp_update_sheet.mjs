@@ -1,0 +1,9 @@
+import fs from 'node:fs';
+const path = '/home/ubuntu/yan-dumpling-inventory/client/src/pages/Home.tsx';
+let s = fs.readFileSync(path, 'utf8');
+s = s.replace('  const list = rawList.filter(r => (!startDate || r.日期 >= startDate) && (!endDate || r.日期 <= endDate)).sort((a, b) => b.日期.localeCompare(a.日期) || b.id - a.id);', '  const list = rawList.filter(r => (!startDate || r.日期 >= startDate) && (!endDate || r.日期 <= endDate)).sort((a, b) => b.日期.localeCompare(a.日期) || b.id - a.id);\n  const sameDayRecords = viewingRecord ? list.filter(record => record.日期 === viewingRecord.日期) : [];\n  const viewingIndex = viewingRecord ? sameDayRecords.findIndex(record => record.id === viewingRecord.id) : -1;\n  const moveViewingRecord = (offset: number) => { const next = sameDayRecords[viewingIndex + offset]; if (next) setViewingRecord(next); };');
+const needle = '<SheetHeader><SheetTitle className="text-[#70452d]">{type}明細</SheetTitle><SheetDescription>查看此筆每日紀錄的完整資料，不需離開目前頁面。</SheetDescription></SheetHeader>{viewingRecord && <div className="mt-6 space-y-4">';
+const replacement = '<SheetHeader><SheetTitle className="text-[#70452d]">{type}明細</SheetTitle><SheetDescription>查看此筆每日紀錄的完整資料，不需離開目前頁面。</SheetDescription></SheetHeader>{viewingRecord && <div className="mt-6 space-y-4"><div className="flex items-center justify-between gap-2 rounded-xl border border-[#eadfd5] bg-[#faf3eb] p-3"><Button size="sm" variant="outline" disabled={viewingIndex <= 0} onClick={() => moveViewingRecord(-1)} className="border-[#dfcbb8] text-[#70452d]">上一筆</Button><span className="text-xs text-[#806653]">同日第 {viewingIndex + 1}／{sameDayRecords.length} 筆</span><Button size="sm" variant="outline" disabled={viewingIndex < 0 || viewingIndex >= sameDayRecords.length - 1} onClick={() => moveViewingRecord(1)} className="border-[#dfcbb8] text-[#70452d]">下一筆</Button></div>';
+if (!s.includes(needle)) throw new Error('找不到明細面板內容');
+s = s.replace(needle, replacement);
+fs.writeFileSync(path, s);

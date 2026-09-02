@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+const path = 'client/src/pages/AdminSettingsPages.tsx';
+let source = fs.readFileSync(path, 'utf8');
+const oldQuery = 'const storesQuery = trpc.admin.listStores.useQuery();';
+if (!source.includes(oldQuery)) throw new Error('找不到門市查詢');
+source = source.replace(oldQuery, 'const storesQuery = trpc.admin.listAllStores.useQuery();');
+const oldButtons = '<Button variant="outline" onClick={() => setPendingDelete(store)} className="border-[#e8b7a8] text-[#a4513f]"><Trash2 className="mr-1 h-4 w-4" />刪除</Button>';
+const newButtons = '<Button variant="outline" onClick={() => update.mutate({ 編號: store.id, 門市代號: store.storeCode, 名稱: store.name, 地址: store.address, 啟用: !store.active })} className={store.active ? "border-[#e8b7a8] text-[#a4513f]" : "border-[#b8d8c1] text-[#39734a]"}>{store.active ? <><Trash2 className="mr-1 h-4 w-4" />停用</> : <><Check className="mr-1 h-4 w-4" />啟用</>}</Button>';
+if (!source.includes(oldButtons)) throw new Error('找不到門市刪除按鈕');
+source = source.replace(oldButtons, newButtons);
+source = source.replace('確定停用「{store.name}」？歷史資料會保留。', '確定停用「{store.name}」？歷史資料會保留。');
+fs.writeFileSync(path, source);

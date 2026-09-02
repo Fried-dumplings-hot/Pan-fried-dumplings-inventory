@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1786925240518,
+      "tag": "0000_public_namor",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1786926120783,
+      "tag": "0001_magenta_liz_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786929110459,
+      "tag": "0002_daffy_overlord",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786936866544,
+      "tag": "0003_vengeful_scalphunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786940076977,
+      "tag": "0004_wide_pyro",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786945224881,
+      "tag": "0005_tidy_fabian_cortez",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786950162373,
+      "tag": "0006_adorable_famine",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787024611212,
+      "tag": "0007_bumpy_unicorn",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1787032799664,
+      "tag": "0008_unique_miss_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1787226956163,
+      "tag": "0009_remarkable_revanche",
+      "breakpoints": true
+    }
+  ]
+}

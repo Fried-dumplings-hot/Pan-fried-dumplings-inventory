@@ -1,0 +1,15 @@
+import fs from "node:fs";
+
+const path = "client/src/pages/Home.tsx";
+let source = fs.readFileSync(path, "utf8");
+source = source.replace(
+  "  const sameDayRecords = viewingRecord ? list.filter(record => record.日期 === viewingRecord.日期) : [];\n  const viewingIndex = viewingRecord ? sameDayRecords.findIndex(record => record.id === viewingRecord.id) : -1;\n  const moveViewingRecord = (offset: number) => { const next = sameDayRecords[viewingIndex + offset]; if (next) setViewingRecord(next); };",
+  "  const sameDayRecords = viewingRecord ? list.filter(record => record.日期 === viewingRecord.日期) : [];"
+);
+const replacement = `    <Sheet open={Boolean(viewingRecord)} onOpenChange={open => !open && setViewingRecord(null)}><SheetContent side="right" className="w-full overflow-y-auto border-[#eadfd5] bg-[#fffdf9] sm:max-w-lg"><SheetHeader><SheetTitle className="text-[#70452d]">{type}明細</SheetTitle><SheetDescription>同日紀錄以清單方式逐行呈現，可直接查看每筆完整資料。</SheetDescription></SheetHeader>{viewingRecord && <div className="mt-6 space-y-4"><div className="flex items-center justify-between gap-3 rounded-xl border border-[#eadfd5] bg-[#faf3eb] p-4"><div><p className="text-xs text-[#a28672]">日期</p><p className="mt-1 font-semibold">{顯示日期與星期(viewingRecord.日期)}</p></div><div className="flex shrink-0 gap-1">{canModify && <Button size="sm" variant="outline" onClick={() => onEdit(viewingRecord)} className="border-[#dfcbb8] text-[#70452d]">修改</Button>}<Button size="sm" variant="outline" onClick={() => { setViewingRecord(null); toast.success("明細已儲存"); }} className="border-[#dfcbb8] text-[#70452d]">儲存</Button>{canDelete && <Button size="sm" variant="outline" onClick={() => { onRemove(viewingRecord); setViewingRecord(null); }} className="border-[#e3b7aa] text-[#a4513f]">刪除</Button>}</div></div><div className="space-y-3">{sameDayRecords.map(record => <button type="button" key={record.id} onClick={() => setViewingRecord(record)} className={\`w-full rounded-xl border p-4 text-left transition-colors \${record.id === viewingRecord.id ? "border-[#b98768] bg-[#fff7ef]" : "border-[#eee4da] bg-white hover:bg-[#fffaf5]"}\`}><div className="flex items-start justify-between gap-3"><div><p className="text-xs text-[#a28672]">貨品品項</p><p className="mt-1 font-semibold text-[#3e2a1f]"><span className="mr-2 text-xs text-[#9b6257]">{items.find(item => item.名稱 === record.品項)?.貨品代號}</span>{record.品項}</p></div><p className="shrink-0 text-lg font-semibold text-[#70452d]">{record.數量} <span className="text-sm font-normal">{record.單位}</span></p></div><div className="mt-3 grid gap-2 text-sm text-[#806653] sm:grid-cols-2"><p>門市：{record.門市名稱 || "未設定門市"}</p><p>備註：{record.備註 || "無"}</p><p>操作人：{record.操作人 || "—"}</p><p>操作時間：{record.操作時間 || "—"}</p></div></button>)}</div></div>}</SheetContent></Sheet>`;
+const start = source.indexOf("    <Sheet open={Boolean(viewingRecord)}");
+const endMarker = "\n  </>;";
+const end = source.indexOf(endMarker, start);
+if (start < 0 || end < 0) throw new Error("找不到明細彈窗區塊");
+source = source.slice(0, start) + replacement + source.slice(end);
+fs.writeFileSync(path, source);

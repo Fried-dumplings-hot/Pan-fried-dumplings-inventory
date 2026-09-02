@@ -1,0 +1,120 @@
+     1	import React, { useEffect, useMemo, useRef, useState } from "react";
+     2	import { BarChart3, ChevronDown, ChevronUp, ClipboardCheck, Download, FileInput, FileOutput, LayoutDashboard, MapPin, Package, Recycle, Search, Settings, ShieldCheck, Store, Trash2, Truck, Users, X } from "lucide-react";
+     3	import { Button } from "@/components/ui/button";
+     4	import { Input } from "@/components/ui/input";
+     5	import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     6	import { Badge } from "@/components/ui/badge";
+     7	import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+     8	import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+     9	import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+    10	import { toast } from "sonner";
+    11	import { trpc } from "@/lib/trpc";
+    12	import { canHydrateSnapshot } from "@shared/snapshot";
+    13	import { 找出低庫存, 解析批次品項 } from "@shared/inventoryFeatures";
+    14	import { 處理登入提交 } from "@shared/loginRules";
+    15	import { 計算進貨小計, 驗證單價輸入 } from "@shared/purchaseRules";
+    16	import { 有操作權限, 取得模組權限 } from "@shared/permissionRules";
+    17	import { 建立門市庫存明細, 格式化類型摘要, 依日期彙整紀錄, 報表作業類型, 篩選報表作業類型, 計算庫存價值數量, 計算門市庫存價值 } from "@shared/reportRules";
+    18	import { 是否已完成門市盤點, 篩選可見門市紀錄 } from "@shared/storeRules";
+    19	
+    20	type 角色 = "管理員" | "一般員工";
+    21	type 模組 = "總覽" | "進貨單" | "退貨單" | "報廢單" | "每日盤點" | "查詢報表" | "後台管理";
+    22	type 品項 = { 編號?: number; 貨品代號: string; 名稱: string; 單價: number; 大值單位: string; 小值單位: string; 換算比例: number; 庫存: number; 低庫存門檻: number };
+    23	type 門市 = { 編號: number; 門市代號: string; 名稱: string; 地址: string };
+    24	type 異動 = { id: number; 類型: string; 日期: string; 品項: string; 數量: number; 單位: string; 單價?: number; 小計?: number; 備註: string; 使用量?: number; 操作人?: string; 操作時間?: string; 門市編號?: number; 門市名稱?: string };
+    25	type 稽核 = { id: number; 動作: string; 操作人: string; 操作時間: string; 內容: string; 異動前?: string; 異動後?: string };
+    26	type 表單行 = { 品項: string; 數量: string; 預設輸入單位?: string; 品項編號?: number; 單價?: string };
+    27	type 預設表單 = { id: number; type: "purchase" | "return" | "scrap" | "count"; name: string; itemIds: string; active?: boolean };
+    28	type 員工 = { 工號: string; 姓名: string; 角色: 角色; 啟用: boolean };
+    29	type 權限設定 = { 模組: string; 新增: boolean; 修改: boolean; 刪除: boolean };
+    30	
+    31	const 初始品項: 品項[] = [];
+    32	const 初始異動: 異動[] = [];
+    33	
+    34	const today = new Date().toISOString().slice(0, 10);
+    35	
+    36	function 讀取安全品項(): 品項[] {
+    37	  try {
+    38	    const parsed = JSON.parse(localStorage.getItem("食包材品項") || "[]");
+    39	    if (!Array.isArray(parsed)) return [];
+    40	    return parsed.filter((item): item is 品項 => Boolean(item && typeof item.名稱 === "string" && item.名稱.trim())).map((item, index) => ({ 編號: Number(item.編號) || undefined, 貨品代號: /^[A-Z]\d{6}$/.test(String(item.貨品代號 || "")) ? String(item.貨品代號).toUpperCase() : `A${String(index + 1).padStart(6, "0")}`, 名稱: item.名稱, 單價: Number(item.單價) || 0, 大值單位: item.大值單位 || "箱", 小值單位: item.小值單位 || "包", 換算比例: Number(item.換算比例) || 1, 庫存: Number(item.庫存) || 0, 低庫存門檻: Number(item.低庫存門檻) || 0 }));
+    41	  } catch { return []; }
+    42	}
+    43	
+    44	function 讀取安全異動(): 異動[] {
+    45	  try {
+    46	    const parsed = JSON.parse(localStorage.getItem("食包材異動") || "[]");
+    47	    if (!Array.isArray(parsed)) return [];
+    48	    return parsed.filter((record): record is 異動 => Boolean(record && typeof record.id !== "undefined" && typeof record.品項 === "string" && record.品項.trim())).map(record => ({ ...record, id: Number(record.id) || Date.now(), 數量: Number(record.數量) || 0 }));
+    49	  } catch { return []; }
+    50	}
+    51	
+    52	export function Login({ onLogin }: { onLogin: (角色: 角色, 工號: string, 姓名: string, 門市: 門市[]) => void }) {
+    53	  const [工號, set工號] = useState("");
+    54	  const [登入錯誤, set登入錯誤] = useState("");
+    55	  const loginMutation = trpc.employee.login.useMutation();
+    56	  return <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f7eadc,transparent_42%),linear-gradient(135deg,#fbf8f2,#efe5d8)] flex items-center justify-center p-6">
+    57	    <Card className="w-full max-w-md border-[#e4d4c0] bg-[#fffdf9]/95 shadow-[0_24px_70px_rgba(101,70,43,.15)] rounded-3xl">
+    58	      <CardHeader className="pb-5 text-center"><div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-[#70452d] text-[#f9ead6] grid place-items-center text-2xl font-semibold">顏</div><p className="text-sm tracking-[.3em] text-[#a07a5f]">食包材庫存管理</p><CardTitle className="text-3xl text-[#3e2a1f]">歡迎登入</CardTitle><p className="text-sm text-[#8c7768]">請使用員工工號進入系統</p></CardHeader>
+    59	      <CardContent className="space-y-5"><div><label htmlFor="員工工號" className="mb-2 block text-sm font-medium text-[#5b4335]">員工工號</label><Input id="員工工號" value={工號} onChange={e => { set工號(e.target.value); set登入錯誤(""); }} placeholder="" className="h-12 rounded-xl border-[#decbb8] bg-white" /></div><div className="rounded-xl border border-[#eadfd5] bg-[#faf3eb] p-3 text-sm text-[#806653]">登入後將依員工資料自動套用管理員或一般員工權限。</div><Button className="h-12 w-full rounded-xl bg-[#70452d] text-white hover:bg-[#5b3724]" disabled={loginMutation.isPending} onClick={async () => { await 處理登入提交({ 工號, request: 輸入 => loginMutation.mutateAsync(輸入), reset: () => loginMutation.reset(), onSuccess: result => onLogin(result.角色 as 角色, result.工號, result.姓名, (result.門市 ?? []) as 門市[]), onError: 訊息 => set登入錯誤(訊息) }); }}>進入系統</Button><p className="text-center text-xs text-[#a38a77]">管理員可使用後台設定與完整資料管理功能</p></CardContent>
+    60	    </Card>
+    61	    <Dialog open={Boolean(登入錯誤)} onOpenChange={open => !open && set登入錯誤("")}><DialogContent className="rounded-2xl border-[#e8b7a8] bg-[#fffaf7]"><DialogHeader><DialogTitle className="text-[#9b4536]">登入失敗</DialogTitle><DialogDescription className="sr-only">登入失敗原因</DialogDescription></DialogHeader><p className="text-sm leading-6 text-[#70452d]">{登入錯誤}</p><Button onClick={() => set登入錯誤("")} className="bg-[#70452d] hover:bg-[#5b3724]">知道了</Button></DialogContent></Dialog>
+    62	  </div>;
+    63	}
+    64	
+    65	export function 取得角色可見門市(role: 角色, assignedStores: 門市[], allStores: 門市[]) {
+    66	  return role === "管理員" ? allStores : assignedStores;
+    67	}
+    68	export function 依貨品代號排序<T extends { 貨品代號: string }>(items: T[]) {
+    69	  return items.slice().sort((a, b) => String(a.貨品代號).localeCompare(String(b.貨品代號), "en", { numeric: true }));
+    70	}
+    71	export function 驗證數量輸入(value: string) {
+    72	  if (value.trim() === "") return { valid: false, message: "數量不可空白" };
+    73	  if (!/^\d+(?:\.\d{0,2})?$/.test(value)) return { valid: false, message: "數量不可為負數，小數最多兩位" };
+    74	  const number = Number(value);
+    75	  if (!Number.isFinite(number) || number < 0) return { valid: false, message: "數量不可為負數" };
+    76	  return { valid: true, message: "" };
+    77	}
+    78	export function 明細操作可見(canModify: boolean, canDelete: boolean) {
+    79	  return { 儲存: true, 修改: canModify, 刪除: canDelete };
+    80	}
+    81	export function 取得工作頁權限模組(type: string) {
+    82	  return type === "進貨" ? "進貨單" : type === "退貨" ? "退貨單" : type === "報廢" ? "報廢單" : "每日盤點";
+    83	}
+    84	function AppShell({ role, employee, employeeName, stores, onLogout }: { role: 角色; employee: string; employeeName: string; stores: 門市[]; onLogout: () => void }) {
+    85	  const storesQuery = trpc.admin.listStores.useQuery(undefined, { enabled: role === "管理員", staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: false });
+    86	  const formTemplatesQuery = trpc.inventory.listFormTemplates.useQuery(undefined, { staleTime: 30_000, refetchOnMount: "always", refetchOnWindowFocus: false });
+    87	  const inventoryItemsQuery = trpc.inventory.listItems.useQuery(undefined, { staleTime: 30_000, refetchOnMount: "always", refetchOnWindowFocus: false });
+    88	  const availableStores = useMemo<門市[]>(() => 取得角色可見門市(role, stores, role === "管理員" && storesQuery.data !== undefined ? storesQuery.data.map(store => ({ 編號: store.id, 門市代號: store.storeCode, 名稱: store.name, 地址: store.address })) : stores), [role, stores, storesQuery.data]);
+    89	  const [active, setActive] = useState<模組>("總覽");
+    90	  const [items, setItems] = useState<品項[]>(() => 讀取安全品項());
+    91	  const 有效品項 = 依貨品代號排序(items.length ? items : (inventoryItemsQuery.data ?? []).map(item => ({ 編號: item.id, 貨品代號: item.materialCode, 名稱: item.name, 單價: Number(item.unitPrice) || 0, 大值單位: item.largeUnit || "箱", 小值單位: item.smallUnit || "包", 換算比例: Number(item.conversionRatio) || 1, 庫存: 0, 低庫存門檻: 0 })));
+    92	  const [records, setRecords] = useState<異動[]>(() => 讀取安全異動());
+    93	  const [auditLogs, setAuditLogs] = useState<稽核[]>([]);
+    94	  const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>(() => role === "管理員" ? availableStores.map(store => store.編號) : availableStores.slice(0, 1).map(store => store.編號));
+    95	  const [operationStoreId, setOperationStoreId] = useState<number | "">(() => availableStores[0]?.編號 ?? "");
+    96	  const formTemplatesForStoreQuery = trpc.inventory.listFormTemplatesForStore.useQuery({ 門市編號: Number(operationStoreId) }, { enabled: typeof operationStoreId === "number" && operationStoreId > 0, staleTime: 30_000, refetchOnMount: "always", refetchOnWindowFocus: false });
+    97	  useEffect(() => {
+    98	    const allowed = role === "管理員" ? availableStores.map(store => store.編號) : availableStores.slice(0, 1).map(store => store.編號);
+    99	    setSelectedStoreIds(previous => role === "管理員" ? (previous.length ? previous.filter(id => allowed.includes(id)) : allowed) : allowed);
+   100	    setOperationStoreId(previous => allowed.includes(Number(previous)) ? previous : (allowed[0] ?? ""));
+   101	  }, [role, availableStores]);
+   102	  const operationStore = availableStores.find(store => store.編號 === Number(operationStoreId));
+   103	  const formTemplatesForStore = (formTemplatesForStoreQuery.data ?? []) as 預設表單[];
+   104	  const [showForm, setShowForm] = useState(false);
+   105	  const [formType, setFormType] = useState("進貨");
+   106	  const [formDate, setFormDate] = useState(today);
+   107	  const [formItem, setFormItem] = useState("");
+   108	  const [formQty, setFormQty] = useState("1");
+   109	  const [formNote, setFormNote] = useState("");
+   110	  const [formLines, setFormLines] = useState<表單行[]>([]);
+   111	  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+   112	  const [selectedTemplateName, setSelectedTemplateName] = useState("未套用預設表單");
+   113	  const [templateDifference, setTemplateDifference] = useState<string[]>([]);
+   114	  const [editingRecord, setEditingRecord] = useState<異動 | null>(null);
+   115	  const [viewingRecord, setViewingRecord] = useState<異動 | null>(null);
+   116	  const [query, setQuery] = useState("");
+   117	  const [startDate, setStartDate] = useState("2026-08-01");
+   118	  const [endDate, setEndDate] = useState(today);
+   119	  const [countedToday, setCountedToday] = useState(false);
+   120	  const [showExportPreview, setShowExportPreview] = useState(false);

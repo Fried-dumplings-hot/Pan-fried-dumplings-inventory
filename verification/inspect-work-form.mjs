@@ -1,0 +1,16 @@
+import { chromium } from "playwright";
+const browser = await chromium.launch({ headless: true, executablePath: "/usr/bin/chromium", args: ["--no-sandbox", "--disable-gpu"] });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+await page.goto(`https://dumplinginv-2vomzamo.manus.space/?驗證=清除登入&表單=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+await page.getByPlaceholder("例如：F001001").fill("F999001");
+await page.getByRole("button", { name: "進入系統" }).click();
+await page.locator("header").getByText("顏嘉輝", { exact: false }).waitFor({ state: "visible", timeout: 30000 });
+await page.locator('button:visible').filter({ hasText: "進貨單" }).first().click();
+await page.getByText("進貨單", { exact: true }).last().waitFor({ state: "visible", timeout: 10000 });
+await page.waitForTimeout(4000);
+console.log((await page.locator("body").innerText()).slice(-1600));
+console.log("BUTTONS", await page.locator("button:visible").evaluateAll(nodes => nodes.map(node => node.textContent?.trim()).filter(Boolean)));
+console.log("PERMISSIONS", await page.evaluate(() => localStorage.getItem("食包材權限")));
+console.log("SNAPSHOT_KEYS", await page.evaluate(() => Object.keys(localStorage)));
+await page.screenshot({ path: "verification/public-work-form-mobile.png", fullPage: true });
+await browser.close();
