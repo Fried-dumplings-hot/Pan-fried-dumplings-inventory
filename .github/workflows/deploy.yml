@@ -25,5 +25,5 @@ jobs:
       - name: 部署到 GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: dist/client # 指定到解壓後的 client 資料夾
-          branch: gh-pages # 自動部署到 gh-pages 分支
+          folder: dist # 指定到解壓後的 client 資料夾
+          branch: pages # 自動部署到 gh-pages 分支
